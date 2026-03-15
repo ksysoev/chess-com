@@ -38,27 +38,34 @@ type Client struct {
 	httpClient *http.Client
 	baseURL    string
 	userAgent  string
+}
+
+// config holds transient build-time configuration collected during New().
+type config struct {
+	httpClient *http.Client
+	baseURL    string
+	userAgent  string
 	timeout    time.Duration
 }
 
 // Option is a functional option for configuring a Client.
-type Option func(*Client)
+type Option func(*config)
 
 // WithHTTPClient sets a custom *http.Client to use for requests.
 // This allows callers to configure transport-level settings such as
 // TLS configuration, proxies, or custom round-trippers.
 // When this option is used, WithTimeout has no effect.
 func WithHTTPClient(c *http.Client) Option {
-	return func(cl *Client) {
-		cl.httpClient = c
+	return func(cfg *config) {
+		cfg.httpClient = c
 	}
 }
 
 // WithBaseURL overrides the base URL of the Chess.com API.
 // This is primarily useful for testing against a mock server.
 func WithBaseURL(url string) Option {
-	return func(cl *Client) {
-		cl.baseURL = url
+	return func(cfg *config) {
+		cfg.baseURL = url
 	}
 }
 
@@ -66,17 +73,17 @@ func WithBaseURL(url string) Option {
 // The Chess.com API recommends including contact information so they can
 // reach out if your application is blocked.
 func WithUserAgent(ua string) Option {
-	return func(cl *Client) {
-		cl.userAgent = ua
+	return func(cfg *config) {
+		cfg.userAgent = ua
 	}
 }
 
-// WithTimeout sets the HTTP request timeout.
-// This option is ignored when WithHTTPClient is also provided, regardless
+// WithTimeout sets the HTTP request timeout for the default HTTP client.
+// This option has no effect when WithHTTPClient is also provided, regardless
 // of the order in which the options are applied.
 func WithTimeout(d time.Duration) Option {
-	return func(cl *Client) {
-		cl.timeout = d
+	return func(cfg *config) {
+		cfg.timeout = d
 	}
 }
 
@@ -86,22 +93,27 @@ func WithTimeout(d time.Duration) Option {
 // to the default HTTP client. If both are provided, the custom client is used
 // as-is and WithTimeout has no effect.
 func New(opts ...Option) *Client {
-	c := &Client{
+	cfg := &config{
 		baseURL:   defaultBaseURL,
 		userAgent: defaultUserAgent,
 	}
 
 	for _, opt := range opts {
-		opt(c)
+		opt(cfg)
 	}
 
-	if c.httpClient == nil {
-		timeout := defaultTimeout
-		if c.timeout != 0 {
-			timeout = c.timeout
-		}
+	c := &Client{
+		baseURL:   cfg.baseURL,
+		userAgent: cfg.userAgent,
+	}
 
-		c.httpClient = &http.Client{Timeout: timeout}
+	switch {
+	case cfg.httpClient != nil:
+		c.httpClient = cfg.httpClient
+	case cfg.timeout != 0:
+		c.httpClient = &http.Client{Timeout: cfg.timeout}
+	default:
+		c.httpClient = &http.Client{Timeout: defaultTimeout}
 	}
 
 	return c
@@ -135,12 +147,20 @@ func (c *Client) get(ctx context.Context, path string) ([]byte, error) {
 
 		return body, nil
 	case http.StatusNotFound:
+		_, _ = io.Copy(io.Discard, resp.Body)
+
 		return nil, ErrNotFound
 	case http.StatusGone:
+		_, _ = io.Copy(io.Discard, resp.Body)
+
 		return nil, ErrGone
 	case http.StatusTooManyRequests:
+		_, _ = io.Copy(io.Discard, resp.Body)
+
 		return nil, ErrRateLimited
 	default:
+		_, _ = io.Copy(io.Discard, resp.Body)
+
 		return nil, newAPIError(resp.StatusCode, resp.Status)
 	}
 }

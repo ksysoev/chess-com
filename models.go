@@ -798,16 +798,16 @@ type LeaderboardEntry struct {
 
 // Leaderboards is the response from the leaderboards endpoint.
 type Leaderboards struct {
-	Daily          []LeaderboardEntry `json:"daily"`
-	Daily960       []LeaderboardEntry `json:"daily960"`
-	LiveRapid      []LeaderboardEntry `json:"live_rapid"`
-	LiveBlitz      []LeaderboardEntry `json:"live_blitz"`
-	LiveBullet     []LeaderboardEntry `json:"live_bullet"`
-	LiveBughouse   []LeaderboardEntry `json:"live_bughouse"`
-	LiveBlitz960   []LeaderboardEntry `json:"live_blitz960"`
-	LiveThreeCheck []LeaderboardEntry `json:"live_threecheck"`
-	LiveCrazyhouse []LeaderboardEntry `json:"live_crazyhouse"`
-	LiveKingOfHill []LeaderboardEntry `json:"live_kingofthehill"`
-	Lessons        []LeaderboardEntry `json:"lessons"`
-	Tactics        []LeaderboardEntry `json:"tactics"`
+	Daily             []LeaderboardEntry `json:"daily"`
+	Daily960          []LeaderboardEntry `json:"daily960"`
+	LiveRapid         []LeaderboardEntry `json:"live_rapid"`
+	LiveBlitz         []LeaderboardEntry `json:"live_blitz"`
+	LiveBullet        []LeaderboardEntry `json:"live_bullet"`
+	LiveBughouse      []LeaderboardEntry `json:"live_bughouse"`
+	LiveBlitz960      []LeaderboardEntry `json:"live_blitz960"`
+	LiveThreeCheck    []LeaderboardEntry `json:"live_threecheck"`
+	LiveCrazyhouse    []LeaderboardEntry `json:"live_crazyhouse"`
+	LiveKingOfTheHill []LeaderboardEntry `json:"live_kingofthehill"`
+	Lessons           []LeaderboardEntry `json:"lessons"`
+	Tactics           []LeaderboardEntry `json:"tactics"`
 }

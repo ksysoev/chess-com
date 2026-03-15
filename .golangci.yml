@@ -69,7 +69,7 @@ linters:
         path: _test\.go$
       - linters:
           - dupl
-        path: (club|country)\.go$
+        path: (player|club|country|tournament|match|puzzle|misc)\.go$
     paths:
       - third_party$
       - builtin$
