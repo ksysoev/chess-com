@@ -44,10 +44,10 @@ type TitledPlayers struct {
 
 // RatingStats holds the last/best rating and record for a specific game type.
 type RatingStats struct {
-	Last       *RatingPoint  `json:"last,omitempty"`
-	Best       *BestRating   `json:"best,omitempty"`
-	Record     *GameRecord   `json:"record,omitempty"`
-	Tournament *TournamentSt `json:"tournament,omitempty"`
+	Last       *RatingPoint     `json:"last,omitempty"`
+	Best       *BestRating      `json:"best,omitempty"`
+	Record     *GameRecord      `json:"record,omitempty"`
+	Tournament *TournamentStats `json:"tournament,omitempty"`
 }
 
 // RatingPoint is the most recent rating data.
@@ -81,8 +81,8 @@ type GameRecord struct {
 	TimeoutPercent float64 `json:"timeout_percent"`
 }
 
-// TournamentSt summarises tournament participation.
-type TournamentSt struct {
+// TournamentStats summarises tournament participation.
+type TournamentStats struct {
 	// Count is the number of tournaments joined.
 	Count int `json:"count"`
 	// Withdraw is the number of tournaments withdrawn from.

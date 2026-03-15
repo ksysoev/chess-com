@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync"
 	"time"
 )
 
@@ -33,20 +32,13 @@ const (
 	defaultTimeout   = 30 * time.Second
 )
 
-// cacheEntry holds an ETag and the raw response body for a cached response.
-type cacheEntry struct {
-	etag string
-	body []byte
-}
-
 // Client is the Chess.com public API client.
 // The zero value is not usable; use New to create a client.
 type Client struct {
 	httpClient *http.Client
-	cache      map[string]cacheEntry
 	baseURL    string
 	userAgent  string
-	mu         sync.RWMutex
+	timeout    time.Duration
 }
 
 // Option is a functional option for configuring a Client.
@@ -55,6 +47,7 @@ type Option func(*Client)
 // WithHTTPClient sets a custom *http.Client to use for requests.
 // This allows callers to configure transport-level settings such as
 // TLS configuration, proxies, or custom round-trippers.
+// When this option is used, WithTimeout has no effect.
 func WithHTTPClient(c *http.Client) Option {
 	return func(cl *Client) {
 		cl.httpClient = c
@@ -78,36 +71,44 @@ func WithUserAgent(ua string) Option {
 	}
 }
 
-// WithTimeout sets the HTTP request timeout on the default HTTP client.
-// This option has no effect if WithHTTPClient is also used.
+// WithTimeout sets the HTTP request timeout.
+// This option is ignored when WithHTTPClient is also provided, regardless
+// of the order in which the options are applied.
 func WithTimeout(d time.Duration) Option {
 	return func(cl *Client) {
-		cl.httpClient.Timeout = d
+		cl.timeout = d
 	}
 }
 
 // New creates and returns a new Chess.com API client.
 // Options are applied in order; later options override earlier ones.
+// If WithTimeout is provided without WithHTTPClient, the timeout is applied
+// to the default HTTP client. If both are provided, the custom client is used
+// as-is and WithTimeout has no effect.
 func New(opts ...Option) *Client {
 	c := &Client{
 		baseURL:   defaultBaseURL,
 		userAgent: defaultUserAgent,
-		cache:     make(map[string]cacheEntry),
-		httpClient: &http.Client{
-			Timeout: defaultTimeout,
-		},
 	}
 
 	for _, opt := range opts {
 		opt(c)
 	}
 
+	if c.httpClient == nil {
+		timeout := defaultTimeout
+		if c.timeout != 0 {
+			timeout = c.timeout
+		}
+
+		c.httpClient = &http.Client{Timeout: timeout}
+	}
+
 	return c
 }
 
-// get performs an HTTP GET request to the given path (relative to the base URL),
-// honouring ETag-based caching. On a 304 Not Modified response it returns the
-// previously cached body. On success it updates the cache and returns the body.
+// get performs an HTTP GET request to the given path (relative to the base URL)
+// and returns the response body bytes.
 func (c *Client) get(ctx context.Context, path string) ([]byte, error) {
 	url := c.baseURL + path
 
@@ -118,14 +119,6 @@ func (c *Client) get(ctx context.Context, path string) ([]byte, error) {
 
 	req.Header.Set("User-Agent", c.userAgent)
 
-	c.mu.RLock()
-	entry, cached := c.cache[url]
-	c.mu.RUnlock()
-
-	if cached {
-		req.Header.Set("If-None-Match", entry.etag)
-	}
-
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("execute request: %w", err)
@@ -134,18 +127,10 @@ func (c *Client) get(ctx context.Context, path string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	switch resp.StatusCode {
-	case http.StatusNotModified:
-		return entry.body, nil
 	case http.StatusOK:
 		body, readErr := io.ReadAll(resp.Body)
 		if readErr != nil {
 			return nil, fmt.Errorf("read response body: %w", readErr)
-		}
-
-		if etag := resp.Header.Get("ETag"); etag != "" {
-			c.mu.Lock()
-			c.cache[url] = cacheEntry{etag: etag, body: body}
-			c.mu.Unlock()
 		}
 
 		return body, nil

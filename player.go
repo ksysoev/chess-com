@@ -3,8 +3,6 @@ package chess
 import (
 	"context"
 	"fmt"
-	"io"
-	"net/http"
 )
 
 // GetPlayer returns the public profile of the player with the given username.
@@ -128,38 +126,11 @@ func (c *Client) GetMonthlyArchive(ctx context.Context, username, year, month st
 //
 // Endpoint: GET /pub/player/{username}/games/{YYYY}/{MM}/pgn
 func (c *Client) GetMonthlyArchivePGN(ctx context.Context, username, year, month string) (string, error) {
-	url := fmt.Sprintf("%s/player/%s/games/%s/%s/pgn", c.baseURL, username, year, month)
+	path := fmt.Sprintf("/player/%s/games/%s/%s/pgn", username, year, month)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	body, err := c.get(ctx, path)
 	if err != nil {
-		return "", fmt.Errorf("create pgn request: %w", err)
-	}
-
-	req.Header.Set("User-Agent", c.userAgent)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("execute pgn request: %w", err)
-	}
-
-	defer resp.Body.Close()
-
-	switch resp.StatusCode {
-	case http.StatusOK:
-		// intentionally fall through to read body
-	case http.StatusNotFound:
-		return "", ErrNotFound
-	case http.StatusGone:
-		return "", ErrGone
-	case http.StatusTooManyRequests:
-		return "", ErrRateLimited
-	default:
-		return "", newAPIError(resp.StatusCode, resp.Status)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("read pgn response: %w", err)
+		return "", fmt.Errorf("get monthly archive pgn %q %s/%s: %w", username, year, month, err)
 	}
 
 	return string(body), nil

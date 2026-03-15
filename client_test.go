@@ -54,11 +54,26 @@ func TestWithHTTPClient(t *testing.T) {
 	assert.Equal(t, custom, c.httpClient)
 }
 
+func TestWithTimeout_IgnoredWhenCustomHTTPClient(t *testing.T) {
+	t.Parallel()
+
+	custom := &http.Client{Timeout: 99 * time.Second}
+
+	// WithTimeout before WithHTTPClient
+	c1 := New(WithTimeout(5*time.Second), WithHTTPClient(custom))
+	assert.Equal(t, custom, c1.httpClient, "custom client should be used")
+	assert.Equal(t, 99*time.Second, c1.httpClient.Timeout, "custom client timeout should not be overridden")
+
+	// WithTimeout after WithHTTPClient
+	c2 := New(WithHTTPClient(custom), WithTimeout(5*time.Second))
+	assert.Equal(t, custom, c2.httpClient, "custom client should be used")
+	assert.Equal(t, 99*time.Second, c2.httpClient.Timeout, "custom client timeout should not be overridden")
+}
+
 func TestGet_Success(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("ETag", `"abc123"`)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"username":"hikaru"}`))
 	}))
@@ -72,7 +87,7 @@ func TestGet_Success(t *testing.T) {
 	assert.Equal(t, `{"username":"hikaru"}`, string(body))
 }
 
-func TestGet_ETagCaching(t *testing.T) {
+func TestGet_NoClientSideCaching(t *testing.T) {
 	t.Parallel()
 
 	callCount := 0
@@ -80,13 +95,8 @@ func TestGet_ETagCaching(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
 
-		if r.Header.Get("If-None-Match") == `"etag1"` {
-			w.WriteHeader(http.StatusNotModified)
+		assert.Empty(t, r.Header.Get("If-None-Match"), "client should not send If-None-Match")
 
-			return
-		}
-
-		w.Header().Set("ETag", `"etag1"`)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"online":true}`))
 	}))
@@ -94,17 +104,13 @@ func TestGet_ETagCaching(t *testing.T) {
 
 	c := New(WithBaseURL(srv.URL))
 
-	body1, err := c.get(t.Context(), "/player/erik/is-online")
-
+	_, err := c.get(t.Context(), "/player/erik/is-online")
 	require.NoError(t, err)
-	assert.Equal(t, `{"online":true}`, string(body1))
 
-	// Second call should get a 304 and return the cached body.
-	body2, err := c.get(t.Context(), "/player/erik/is-online")
-
+	_, err = c.get(t.Context(), "/player/erik/is-online")
 	require.NoError(t, err)
-	assert.Equal(t, `{"online":true}`, string(body2))
-	assert.Equal(t, 2, callCount, "server should have been called twice")
+
+	assert.Equal(t, 2, callCount, "each call should reach the server independently")
 }
 
 func TestGet_NotFound(t *testing.T) {

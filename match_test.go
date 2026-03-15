@@ -1,6 +1,7 @@
 package chess
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -47,13 +48,7 @@ func TestGetTeamMatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			srv := newTestServer(t, "/match/12803", tt.statusCode, tt.body)
-
-			if tt.id != 12803 {
-				srv.Close()
-				srv = newTestServer(t, "/match/99999", tt.statusCode, tt.body)
-			}
-
+			srv := newTestServer(t, fmt.Sprintf("/match/%d", tt.id), tt.statusCode, tt.body)
 			defer srv.Close()
 
 			c := New(WithBaseURL(srv.URL))
