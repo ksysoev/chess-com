@@ -64,6 +64,12 @@ linters:
       - linters:
           - goconst
         path: _test\.go$
+      - linters:
+          - dupl
+        path: _test\.go$
+      - linters:
+          - dupl
+        path: (player|club|country|tournament|match|puzzle|misc)\.go$
     paths:
       - third_party$
       - builtin$
