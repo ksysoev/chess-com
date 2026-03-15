@@ -1,4 +1,4 @@
-package chess
+package chesscom
 
 // PlayerProfile contains details about a Chess.com player.
 type PlayerProfile struct {

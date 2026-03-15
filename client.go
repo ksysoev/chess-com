@@ -1,4 +1,4 @@
-// Package chess provides a client for the Chess.com public API (PubAPI).
+// Package chesscom provides a client for the Chess.com public API (PubAPI).
 //
 // The PubAPI is a read-only REST API that exposes public data from Chess.com
 // such as player profiles, game histories, club information, tournaments,
@@ -6,16 +6,16 @@
 //
 // Usage:
 //
-//	client := chess.New()
+//	client := chesscom.New()
 //	profile, err := client.GetPlayer(ctx, "hikaru")
 //
 // The client supports functional options for customisation:
 //
-//	client := chess.New(
-//	    chess.WithTimeout(10 * time.Second),
-//	    chess.WithUserAgent("myapp/1.0 (contact@example.com)"),
+//	client := chesscom.New(
+//	    chesscom.WithTimeout(10 * time.Second),
+//	    chesscom.WithUserAgent("myapp/1.0 (contact@example.com)"),
 //	)
-package chess
+package chesscom
 
 import (
 	"context"
